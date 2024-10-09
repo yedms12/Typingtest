@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>타자 연습으로 알아보는 나의 타자 실력</title>
+    <style>
+        @font-face {
+            font-family: 'NeoDunggeunmoPro-Regular';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2302@1.0/NeoDunggeunmoPro-Regular.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        * {
+            font-family: 'NeoDunggeunmoPro-Regular';
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            background-color: #000; 
+            background-image: url('cyber1.jpg'); 
+            background-size: cover; 
+            background-position: center; 
+            color: #fff; 
+        }
+
+        #gameArea {
+            position: relative;
+            width: 80%;
+            height: 50vh; 
+            border: 2px solid #fff; 
+            overflow: hidden;
+            background-color: rgba(0, 0, 0, 0.5); 
+            margin-bottom: 20px; 
+            margin-top: 20px;
+            border-radius: 10px;
+        }
+
+        .fallingWord {
+            position: absolute;
+            font-size: 2em;
+            color: #fff; 
+            white-space: nowrap;
+        }
+
+        #input {
+            font-size: 1.5em;
+            padding: 10px;
+            width: 300px;
+            margin-top: 10px; 
+            margin-bottom: 20px; 
+            background-color: rgba(255, 255, 255, 0.8);
+            color: #000; 
+        }
+
+        #score, #timer {
+            font-size: 1.5em;
+            margin-top: 10px;
+            position: absolute; 
+            right: 20px;
+            background-color: #000; 
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #fff; 
+            color: #fff; 
+        }
+
+        #score {
+            top: 20px; 
+        }
+
+        #timer {
+            top: 70px; 
+        }
+
+        #startBtn, #restartBtn {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin-top: 10px;
+            border: none;
+            background-color: #fff; 
+            color: #000; 
+            border-radius: 5px;
+        }
+
+        #difficulty {
+            margin-top: 20px;
+        }
+
+        #nicknameContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        #nickname {
+            font-size: 1.5em;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: rgba(255, 255, 255, 0.8); 
+            color: #000; 
+        }
+
+        #restartBtn {
+            display: none; 
+            margin-top: 10px;
+        }
+
+        #result {
+            display: none;
+            font-size: 2em; 
+            text-align: center;
+            margin-top: 20px;
+            background-color: rgba(255, 255, 255, 0.9); 
+            border: 2px solid #fff; 
+            padding: 20px;
+            border-radius: 10px;
+            color: #000;
+        }
+
+        .spacing {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="font-size: 3.5rem;">타자 연습으로 알아보는 나의 타자 실력</h1>
+    <div id="nicknameContainer">
+        <input type="text" id="nickname" placeholder="닉네임을 입력하세요">
+        <div id="difficulty">
+            난이도 선택: 
+            <select id="difficultySelect" style="padding-bottom:5px;">
+                <option value="beginner">초급</option>
+                <option value="intermediate">중급</option>
+                <option value="advanced">상급</option>
+            </select>
+        </div>
+        <button id="startBtn">게임 시작</button>
+    </div>
+    <div id="gameArea" class="spacing"></div>
+    <input type="text" id="input" placeholder="여기에 입력하세요" style="display: none;">
+    
+    <div id="score">점수: 0</div>
+    <div id="timer" style="color: orangered;">남은 시간: 30초</div>
+    
+    <div id="result"></div>
+    <span id="restartBtn">🔄 다시 시작</span>
+
+    <audio id="bgMusic" src="aespa.mp3" preload="auto"></audio> 
+
+    <script>
+        const words = [
+            "사과", "바나나", "체리", "딸기", "포도", 
+            "키위", "오렌지", "배", "망고", "복숭아", 
+            "파인애플", "레몬", "개", "고양이", "새", 
+            "코끼리", "토끼", "주황", "파랑", "검정", 
+            "흰색", "초록", "노랑", "핑크", "회색", "햄스터", "망고스틴", "얼룩말", "너구리", 
+            "병아리", "닭", "보라", "수박", "라임"
+        ];
+
+        let score = 0;
+        let timeLeft = 30; 
+        let gameInterval;
+        let dropInterval;
+        let fallingSpeed = 1; 
+        const gameArea = document.getElementById('gameArea');
+        const inputElement = document.getElementById('input');
+        const scoreElement = document.getElementById('score');
+        const timerElement = document.getElementById('timer');
+        const startBtn = document.getElementById('startBtn');
+        const difficultySelect = document.getElementById('difficultySelect');
+        const restartBtn = document.getElementById('restartBtn');
+        const nicknameInput = document.getElementById('nickname');
+        const resultElement = document.getElementById('result');
+        const bgMusic = document.getElementById('bgMusic');
+
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', resetGame);
+        inputElement.addEventListener('keydown', handleInput);
+
+        function startGame() {
+            if (nicknameInput.value.trim() === "") {
+                alert("닉네임을 입력하세요!");
+                return;
+            }
+
+            score = 0;
+            timeLeft = 30; 
+            scoreElement.textContent = `점수: ${score}`;
+            timerElement.textContent = `남은 시간: ${timeLeft}초`;
+            inputElement.value = '';
+            inputElement.style.display = 'block'; 
+            inputElement.focus();
+            clearInterval(gameInterval);
+            clearInterval(dropInterval);
+            setDifficulty();
+            gameInterval = setInterval(updateTimer, 1000); 
+            dropInterval = setInterval(createFallingWord, 1000 / fallingSpeed); 
+            restartBtn.style.display = 'none'; 
+            resultElement.style.display = 'none'; 
+            bgMusic.play(); 
+        }
+
+        function setDifficulty() {
+            const difficulty = difficultySelect.value;
+            if (difficulty === "beginner") {
+                fallingSpeed = 1; 
+            } else if (difficulty === "intermediate") {
+                fallingSpeed = 1.4; 
+            } else if (difficulty === "advanced") {
+                fallingSpeed = 1.8;
+            }
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            timerElement.textContent = `남은 시간: ${timeLeft}초`;
+            if (timeLeft <= 0) {
+                clearInterval(gameInterval);
+                clearInterval(dropInterval);
+                showResult();
+                bgMusic.pause(); 
+                bgMusic.currentTime = 0; 
+            }
+        }
+
+        function createFallingWord() {
+            const wordElement = document.createElement('div');
+            const randomWord = words[Math.floor(Math.random() * words.length)];
+            wordElement.textContent = randomWord;
+            wordElement.className = 'fallingWord';
+
+            let overlap;
+            let leftPosition;
+
+            // 겹치지 않는 위치를 찾을 때까지 반복
+            do {
+                overlap = false;
+                leftPosition = Math.random() * (gameArea.clientWidth - 100) + 'px'; // 랜덤 x 위치 설정
+                wordElement.style.left = leftPosition; // 설정한 위치로 단어 위치 변경
+
+                // 현재 게임 영역 내의 모든 단어와 겹치는지 확인
+                const existingWords = gameArea.getElementsByClassName('fallingWord');
+                for (let existingWord of existingWords) {
+                    const existingRect = existingWord.getBoundingClientRect();
+                    wordElement.style.position = 'absolute'; 
+                    const newRect = wordElement.getBoundingClientRect();
+
+                    if (newRect.left < existingRect.right &&
+                        newRect.right > existingRect.left &&
+                        newRect.top < existingRect.bottom &&
+                        newRect.bottom > existingRect.top) {
+                        overlap = true; // 겹침이 발생하면 다시 위치를 찾음
+                    }
+                }
+            } while (overlap); // 겹침이 없을 때까지 반복
+
+            gameArea.appendChild(wordElement);
+
+            let position = 0;
+            const fallInterval = setInterval(() => {
+                if (position >= gameArea.clientHeight - 50) {
+                    clearInterval(fallInterval);
+                    gameArea.removeChild(wordElement);
+                } else {
+                    position += fallingSpeed * 5; 
+                    wordElement.style.top = position + 'px';
+                }
+            }, 1000 / fallingSpeed);
+
+            // 엔터 키를 눌렀을 때 단어를 삭제하고 점수를 추가하는 기능
+            wordElement.addEventListener('click', () => {
+                if (inputElement.value === randomWord) {
+                    score += randomWord.length; 
+                    scoreElement.textContent = `점수: ${score}`;
+                    gameArea.removeChild(wordElement);
+                    inputElement.value = '';
+                }
+            });
+        }
+
+        function handleInput(event) {
+            if (event.key === 'Enter') {
+                const currentWordElements = gameArea.getElementsByClassName('fallingWord');
+                for (let wordElement of currentWordElements) {
+                    if (wordElement.textContent === inputElement.value) {
+                        score += inputElement.value.length; // 점수 계산
+                        scoreElement.textContent = `점수: ${score}`;
+                        gameArea.removeChild(wordElement); // 맞춘 단어 삭제
+                        inputElement.value = ''; // 입력창 비우기
+                        break; // 첫 번째 일치하는 단어만 삭제
+                    }
+                }
+            }
+        }
+
+        function showResult() {
+            resultElement.style.display = 'block';
+            resultElement.textContent = `${nicknameInput.value}님의 최종 점수는 ${score}점입니다!`;
+            restartBtn.style.display = 'block'; 
+        }
+
+        function resetGame() {
+            score = 0;
+            timeLeft = 30; 
+            scoreElement.textContent = `점수: ${score}`;
+            timerElement.textContent = `남은 시간: ${timeLeft}초`;
+            inputElement.value = '';
+            gameArea.innerHTML = '';
+            inputElement.style.display = 'none'; 
+            resultElement.style.display = 'none'; 
+            restartBtn.style.display = 'none'; 
+            bgMusic.pause(); 
+            bgMusic.currentTime = 0; 
+        }
+    </script>
+</body>
+</html>
